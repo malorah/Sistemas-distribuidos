@@ -1,0 +1,16 @@
+# /tarea_enzzo/cache/docker-compose.yml
+version: '3.8'
+
+services:
+  cache:
+    image: redis:7.0-alpine
+    container_name: waze-cache
+    ports:
+      - "6379:6379"
+    networks:
+      - cache-net
+
+networks:
+  cache-net:
+    name: cache-net
+    driver: bridge

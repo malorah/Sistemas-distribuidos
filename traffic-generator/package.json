@@ -1,0 +1,12 @@
+{
+  "name": "traffic-generator",
+  "version": "1.0.0",
+  "description": "Generador sintético de consultas a Storage-API (Poisson / Bursty)",
+  "main": "runGenerator.js",
+  "scripts": {
+    "start": "node runGenerator.js"
+  },
+  "dependencies": {
+    "axios": "^1.4.0"
+  }
+}

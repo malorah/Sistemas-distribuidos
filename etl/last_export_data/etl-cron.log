@@ -1,0 +1,19 @@
+/bin/sh: 1: /app/run_etl_periodico.sh: Permission denied
+/app/run_etl_periodico.sh: line 8: python: command not found
+ETL ejecutado a 2025-06-02T20:35:36Z
+ETL ejecutado a 2025-06-02T21:04:29Z
+ETL ejecutado a 2025-06-02T21:34:17Z
+ETL ejecutado a 2025-06-02T22:04:18Z
+ETL ejecutado a 2025-06-03T14:55:53Z
+ETL ejecutado a 2025-06-03T14:59:27Z
+ETL ejecutado a 2025-06-03T15:04:59Z
+ETL ejecutado a 2025-06-03T15:06:29Z
+ETL ejecutado a 2025-06-03T15:09:53Z
+ETL ejecutado a 2025-06-03T15:12:07Z
+ETL ejecutado a 2025-06-03T19:19:58Z
+ETL ejecutado a 2025-06-03T21:13:28Z
+ETL ejecutado a 2025-06-03T21:31:59Z
+ETL ejecutado a 2025-06-03T21:56:21Z
+ETL ejecutado a 2025-06-03T22:16:02Z
+ETL ejecutado a 2025-06-03T22:23:41Z
+ETL ejecutado a 2025-06-03T22:31:06Z

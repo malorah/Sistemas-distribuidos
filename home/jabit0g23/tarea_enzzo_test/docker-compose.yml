@@ -1,0 +1,143 @@
+# ~/tarea_enzzo_test/docker-compose.yml
+version: '3.8'
+
+services:
+  cache:
+    image: redis:7.0-alpine
+    container_name: waze-cache
+    ports:
+      - "6379:6379"
+    networks:
+      - cache-net
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+
+  storage-api:
+    build:
+      context: ./storage
+      dockerfile: Dockerfile
+    container_name: storage-api
+    depends_on:
+      - mongodb
+      - cache
+    environment:
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_DB=waze_traffic
+      - REDIS_HOST=cache
+      - REDIS_PORT=6379
+    ports:
+      - "4000:4000"
+    networks:
+      - storage-net
+      - cache-net
+
+  mongodb:
+    image: mongo:6.0
+    container_name: storage-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo-data:/data/db
+    networks:
+      - storage-net
+
+  scraper:
+    build:
+      context: .
+      dockerfile: scraper/Dockerfile
+    container_name: waze-scraper
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_HOST=storage-mongodb
+      - MONGO_PORT=27017
+      - MONGO_DB=waze_traffic
+    networks:
+      - storage-net
+
+  traffic-generator:
+    build:
+      context: ./traffic-generator
+      dockerfile: Dockerfile
+    container_name: traffic-generator
+    depends_on:
+      - storage-api
+    environment:
+      - STORAGE_API_URL=http://storage-api:4000
+    networks:
+      - storage-net
+
+  etl:
+    build:
+      context: ./etl
+      dockerfile: Dockerfile
+    container_name: waze-etl
+    depends_on:
+      - mongodb
+      - namenode
+    environment:
+      - MONGO_HOST=storage-mongodb
+      - MONGO_PORT=27017
+      - MONGO_DB=waze_traffic
+      - HDFS_URL=webhdfs://namenode:9870
+    networks:
+      - storage-net
+      - hadoop-net
+    volumes:
+      - ./etl/run_etl_periodico.sh:/app/run_etl_periodico.sh
+      - ./etl/last_export_data:/app/last_export_data
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        #!/usr/bin/env bash
+        set -e
+
+        echo "ETL Entrypoint: Esperando 30 segundos para que NameNode WebHDFS (namenode:9870) se estabilice..."
+        sleep 30
+
+        # Ejecutamos el ETL una vez al arrancar
+        /app/run_etl_periodico.sh
+
+        # Bucle infinito: cada 30 minutos, lanzar nuevamente el ETL
+        while true; do
+          echo "---- Esperando 30 minutos antes de la siguiente corrida de ETL ----"
+          sleep 1800
+          echo "---- Iniciando ETL periódico ----"
+          /app/run_etl_periodico.sh
+        done
+  pig:
+    build:
+      context: .
+      dockerfile: pig/Dockerfile
+    image: my-pig:0.17.0-hadoop3.2.1-java8
+    container_name: hadoop-pig
+    depends_on:
+      - namenode
+      - datanode
+      - etl
+    networks:
+      - hadoop-net
+    volumes:
+      # Montamos el script .pig y el entrypoint
+      - ./procesamiento_incidentes.pig:/procesamiento_incidentes.pig:ro
+      - ./hdfs-output:/mnt/pig_local_output_for_host
+      - ./pig-entrypoint.sh:/pig-entrypoint.sh:ro
+    entrypoint:
+      - /bin/bash
+      - /pig-entrypoint.sh
+
+networks:
+  cache-net:
+    name: cache-net
+    driver: bridge
+  storage-net:
+    name: storage-net
+    driver: bridge
+  hadoop-net:
+    external: true
+
+volumes:
+  mongodb_data:

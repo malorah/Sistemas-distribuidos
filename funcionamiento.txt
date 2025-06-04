@@ -1,0 +1,100 @@
+==========================================
+        GUÍA DE FUNCIONAMIENTO
+==========================================
+
+1) Preparar y levantar los servicios principales
+------------------------------------------------
+
+a) Levantar Redis, MongoDB y Storage-API (con Docker Compose)
+
+   En la raíz del proyecto (donde está el archivo docker-compose.yml):
+   -------------------------------------------------------------------
+
+   # Levanta los contenedores de cache (Redis), MongoDB y Storage-API
+   docker-compose up -d cache mongodb storage-api
+
+   - cache      → Redis escuchando en el puerto 6379.
+   - mongodb    → MongoDB escuchando en el puerto 27017.
+   - storage-api → API Express en el puerto 4000.
+
+b) Inicializar las colecciones e índices en MongoDB (ESTO SE EJECUTA UNA VEZ, YA LO EJECUTE ENTONCES NO ES NECESARIO QUE SE VUELVA A EJECUTAR NUNCA MÁS, POR GRABE LA DATA DE MONGO PERSISTENTEMENTE EN "MONGO-DATA")
+
+   # Ejecuta el script init-scripts dentro de storage-api
+   docker exec -it storage-api npm run init
+
+   Esto crea las colecciones `jams` y `alerts` (si no existen) y sus índices únicos.
+
+c) Levantar el Scraper (carga datos desde Waze a MongoDB)
+---------------------------------------------------------
+
+   # Construye y arranca el contenedor del scraper
+   docker-compose up -d --build scraper
+
+   - El scraper abrirá Puppeteer, navegará por cada URL de `scraper/cities.csv`,
+     interceptará la respuesta `/api/georss` y guardará `jams` y `alerts` en MongoDB
+     (ignorando duplicados).
+
+   Para ver los logs en tiempo real:
+   ---------------------------------
+   docker-compose logs -f scraper
+
+d) Levantar el generador de tráfico sintético
+----------------------------------------------
+
+   # Construye y arranca el contenedor del traffic-generator
+   docker-compose up -d --build traffic-generator
+
+   - Este componente obtiene la lista de IDs (`_id`) de `jams` desde Storage-API,
+     y lanza consultas GET a `/jams/:id` con una distribución Poisson (por defecto).
+   - Gracias al middleware de cache en Storage-API, las respuestas se servirán de Redis
+     cuando ya estén en cache (cache hit) o de MongoDB y luego se cachearán (cache miss).
+
+   Para ver los logs en tiempo real:
+   ---------------------------------
+   docker-compose logs -f traffic-generator
+
+------------------------------------------
+2) Consultas manuales y verificación
+------------------------------------------
+
+a) Verificar datos en MongoDB
+------------------------------
+
+   # Accede a Mongosh dentro del contenedor de MongoDB
+   docker exec -it storage-mongodb mongosh
+
+   > use waze_traffic
+   > db.jams.find().limit(5).pretty()
+   > db.alerts.find().limit(5).pretty()
+
+b) Consultar un documento específico a través del Storage-API (y probar cache)
+-----------------------------------------------------------------------------
+
+   # Supongamos que obtuviste un _id de Mongo: 683cac1dcefee7013879bd7a
+   curl -i http://localhost:4000/jams/683cac1dcefee7013879bd7a
+
+   - Primera vez: cache miss (se lee de MongoDB y luego se guarda en Redis).
+   - Segunda vez (rápido): cache hit (se sirve directo desde Redis).
+
+   También puedes inspeccionar Redis directamente:
+
+   # Conecta al cliente de Redis
+   docker exec -it waze-cache redis-cli
+
+   > KEYS jam:*
+   > GET jam:683cac1dcefee7013879bd7a
+
+------------------------------------------
+3) Parar y limpiar servicios
+------------------------------------------
+
+a) Parar todos los contenedores
+-------------------------------
+
+   docker-compose down
+
+b) Eliminar volúmenes de MongoDB (si quieres borrar datos)
+----------------------------------------------------------
+
+   docker-compose down -v
+

@@ -1,0 +1,17 @@
+
+{
+  "name": "waze-scraper",
+  "version": "1.0.0",
+  "description": "Scraper de Waze que escribe directamente en MongoDB",
+  "main": "scraper.js",
+  "scripts": {
+    "start": "node scraper.js"
+  },
+  "dependencies": {
+    "puppeteer": "^23.7.0",
+    "csv-parser": "^3.0.0",
+    "mongodb": "^5.9.2",
+    "axios": "^1.4.0",
+    "dotenv": "^16.0.3"
+  }
+}

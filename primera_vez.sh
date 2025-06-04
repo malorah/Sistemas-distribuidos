@@ -5,7 +5,9 @@
 sudo rm -rf mongo-data
 python3 -m venv distri
 source distri/bin/activate
-sudo pip install mongodb -y
+pip install mongodb -y
+pip install redis -y
+
 sudo docker-compose up -d cache mongodb storage-api
 sudo docker exec -it storage-api npm run init
 sudo docker-compose up -d --build scraper

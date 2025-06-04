@@ -1,4 +1,0 @@
-pip install pymongo redis
-
-
-chmod +x ~/tarea_enzzo_test/pig-entrypoint.sh
